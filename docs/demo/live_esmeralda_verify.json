@@ -1,0 +1,31 @@
+{
+  "auditor_total": 10000,
+  "outputs": [
+    {
+      "auditor_view_key_reads": 3000,
+      "commitment": "60e17c2ed8292474a461e1d442181ea5a140bda4f1780098ee88a3e4ba798302",
+      "holder": "night nurse",
+      "pay_stub": {
+        "amount": 3000,
+        "memo": "October night shift: 12 nights, ward 13",
+        "opened_by": "night nurse"
+      }
+    },
+    {
+      "auditor_view_key_reads": 2500,
+      "commitment": "9e7a6f35baf16315d5a4a5fad17faf3582e52a16472cae2f5e702261b161fa7c",
+      "holder": "gravedigger",
+      "pay_stub": {
+        "amount": 2500,
+        "memo": "October night shift: 9 plots, lantern allowance",
+        "opened_by": "gravedigger"
+      }
+    },
+    {
+      "auditor_view_key_reads": 4500,
+      "commitment": "e281d7a4c61404d53f763e11b47b1831fa509b80f691419c03657b753ab5ad35",
+      "holder": "treasury",
+      "pay_stub": null
+    }
+  ]
+}
