@@ -1222,6 +1222,8 @@ name = "graveyard_shift"
 version = "0.1.0"
 dependencies = [
  "rand",
+ "serde_json",
+ "tari_crypto",
  "tari_ootle_template_build",
  "tari_template_lib",
  "tari_template_test_tooling",

@@ -10,9 +10,54 @@ with a view key, and a coworker sees nothing at all.
 **▶ Try it in the browser (no wallet, 30 s):** https://xachp.github.io/graveyard-shift/
 Pick a lantern (public, employee, auditor, coworker) and watch the same three paychecks change.
 
+**🟢 Live on Esmeralda:** template [`93a17d16…`](https://explorer.tari.mw/template/93a17d16cce0cec637f618b0cda9a9a869ac706b4b98e77ee28aaa40b419e570) · payroll component [`component_7ffa9638…`](https://explorer.tari.mw/substate/component_7ffa963826ef41ea9d082c8142b7cb02c554b19bad91ee9de9f71ba62e6367fc) · [shift transaction](https://explorer.tari.mw/tx/ab2947b0fcb49adc66b30c68bc6f39832d7c218fdfcc292f5a16c1cc6ecbaeec). See [Live on Esmeralda](#-live-on-esmeralda-ootle-public-testnet).
+
 ![demo](docs/img/demo.gif)
 
 ---
+
+## 🟢 Live on Esmeralda (Ootle public testnet)
+
+Graveyard Shift is published on Esmeralda and has paid a real night shift. Judges can open every
+object below in the [Veil explorer](https://explorer.tari.mw) or as raw JSON from the public indexer.
+
+| What | Address / tx | Links |
+|---|---|---|
+| Template `GraveyardShift` | `93a17d16cce0cec637f618b0cda9a9a869ac706b4b98e77ee28aaa40b419e570` | [explorer](https://explorer.tari.mw/template/93a17d16cce0cec637f618b0cda9a9a869ac706b4b98e77ee28aaa40b419e570) · [indexer](https://ootle-indexer-a.tari.com/templates/93a17d16cce0cec637f618b0cda9a9a869ac706b4b98e77ee28aaa40b419e570) |
+| Payroll component | `component_7ffa963826ef41ea9d082c8142b7cb02c554b19bad91ee9de9f71ba62e6367fc` | [explorer](https://explorer.tari.mw/substate/component_7ffa963826ef41ea9d082c8142b7cb02c554b19bad91ee9de9f71ba62e6367fc) · [indexer](https://ootle-indexer-a.tari.com/substates/component_7ffa963826ef41ea9d082c8142b7cb02c554b19bad91ee9de9f71ba62e6367fc) |
+| Confidential `SHIFT` token (auditor view key locked on) | `resource_7f7e726d1a87f15052ca5ec94227f25eebaa773580bb2e0b8e881265229bcef1` | [explorer](https://explorer.tari.mw/substate/resource_7f7e726d1a87f15052ca5ec94227f25eebaa773580bb2e0b8e881265229bcef1) |
+| Publish template tx | `cb4494d56fe2c04c6cbad62c23c1ac69f7e708d81a520996bd1befc6617c0acc` | [explorer](https://explorer.tari.mw/tx/cb4494d56fe2c04c6cbad62c23c1ac69f7e708d81a520996bd1befc6617c0acc) |
+| `new(...)` tx: opening budget 10,000 SHIFT + 2 employee accounts | `ca55a282e81382774f8698f329aa58abe5b3b9034f6fb06ba654098f36434f9d` | [explorer](https://explorer.tari.mw/tx/ca55a282e81382774f8698f329aa58abe5b3b9034f6fb06ba654098f36434f9d) |
+| **Night shift tx**: `hire` ×2 · `open_period` · `pay_shift` in one transaction | `ab2947b0fcb49adc66b30c68bc6f39832d7c218fdfcc292f5a16c1cc6ecbaeec` | [explorer](https://explorer.tari.mw/tx/ab2947b0fcb49adc66b30c68bc6f39832d7c218fdfcc292f5a16c1cc6ecbaeec) · [indexer](https://ootle-indexer-a.tari.com/transactions/ab2947b0fcb49adc66b30c68bc6f39832d7c218fdfcc292f5a16c1cc6ecbaeec) |
+| Night nurse account | `component_a1073a7c6beaaf8031b80d66eb9c9d9a7b5e3a00d7efb497d09fe1032786aa9a` | [explorer](https://explorer.tari.mw/substate/component_a1073a7c6beaaf8031b80d66eb9c9d9a7b5e3a00d7efb497d09fe1032786aa9a) |
+| Gravedigger account | `component_aafb1b07b970795213ddf3d8d0be8dc014764940cb0446f8f6bed25001269f36` | [explorer](https://explorer.tari.mw/substate/component_aafb1b07b970795213ddf3d8d0be8dc014764940cb0446f8f6bed25001269f36) |
+
+In the shift transaction, look at the events: `Hired`, `Hired`, `PeriodOpened {period: 1}`,
+`ShiftPaid {period: 1, paychecks: 2}`. There are no amounts anywhere. Each paycheck is a `coutput_…`
+substate holding a commitment, an encrypted pay stub and an ElGamal viewable balance.
+
+**Check it from public chain state.** `examples/live_esmeralda.rs` reads the vaults and outputs from
+the public indexer and decrypts them with each party's key
+([output](docs/demo/live_esmeralda_verify.json)):
+
+| Output | Employee key opens | Auditor view key reads |
+|---|---|---|
+| night nurse paycheck | 3000 · "October night shift: 12 nights, ward 13" | 3000 |
+| gravedigger paycheck | 2500 · "October night shift: 9 plots, lantern allowance" | 2500 |
+| treasury change | (employer's key) | 4500 |
+| **total** | | **10000 = public budget ✔** |
+
+Fees for the whole deployment (publish + create + shift) came to about **1.5 tTARI**. The funds came
+from CPU-mining Esmeralda L1 (SHA-3x) and burning tXTM to the Ootle account with the official
+burn-and-claim bridge, because the public faucet was empty. The demo keys are test-only.
+
+```bash
+# reproduce against your own walletd (employer key lives in the wallet daemon)
+cargo run --example live_esmeralda -- init <employer_account_public_key>
+cargo run --example live_esmeralda -- new <template_hex> <employer_account> <max_epoch> <max_fee>   # → unsigned tx JSON for transactions.submit
+cargo run --example live_esmeralda -- shift <component> <employer_account> <max_epoch> <max_fee>    # set GS_INPUTS=<treasury coutput ids>
+cargo run --example live_esmeralda -- verify https://ootle-indexer-a.tari.com <resource> "label=vault_…" …
+```
 
 ## Why this matters
 
@@ -135,16 +180,14 @@ See **[THREAT_MODEL.md](THREAT_MODEL.md)**, which maps 17 attacks to the test th
   Paying into stealth UTXOs would hide recipients too, and that's next.
 * **The total budget is public** (supply tracking). The split isn't.
 * **The auditor key is fixed per payroll** and opens all amounts of this token.
-* **Not yet on Esmeralda.** The public testnet faucet is currently empty (999.65 tTARI held,
-  1,000 per claim). Everything is verified on the in-process engine (`tari_template_test_tooling 0.47`).
-  Unaudited.
+* **Testnet only.** Live on Esmeralda with test keys (see above). Not on mainnet, and unaudited.
 
 > Build note: `tari_template_test_tooling 0.47.0` doesn't compile against `tari_crypto 0.24.1`.
 > `Cargo.lock` pins `0.24.0`. If you regenerate the lock, run `cargo update -p tari_crypto --precise 0.24.0`.
 
 ## Roadmap
 
-1. Deploy to Esmeralda and record explorer links for a full shift.
+1. ~~Deploy to Esmeralda and record explorer links for a full shift.~~ Done (see above).
 2. Stealth paychecks, so the roster is private too (pay to one-time stealth outputs and prove
    headcount with a counter).
 3. Sapient Web Extension page for employees: connect, read your stubs, export a payslip.
