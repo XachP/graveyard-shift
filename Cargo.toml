@@ -4,11 +4,11 @@
 name = "graveyard_shift"
 version = "0.1.0"
 edition = "2024"
-description = "Graveyard Shift: confidential payroll on Tari Ootle. Salaries stay secret on-chain; a designated auditor can still check the books with a view key."
+description = "Graveyard Shift: confidential payroll on Tari Ootle. Salaries stay secret on-chain, employees read encrypted pay stubs, and a designated auditor reconciles the books with a view key."
 license = "MIT"
 
 [package.metadata.tari-template]
-tags = ["payroll", "privacy", "confidential", "view-key", "audit"]
+tags = ["payroll", "privacy", "confidential", "view-key", "audit", "encrypted-memo"]
 category = "finance"
 
 [dependencies]

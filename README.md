@@ -1,119 +1,155 @@
 # 🦇 Graveyard Shift: payroll that stays in the dark
 
-**Confidential payroll on Tari Ootle.** Salaries never show up on-chain. A designated auditor
-can still open the books with a view key.
+**Confidential payroll on the Tari Ootle.** No salary ever appears on-chain. Each employee reads
+their own encrypted pay stub straight from the chain. A designated auditor reconciles the books
+with a view key, and a coworker sees nothing at all.
 
-*Entry for the Tari Ootle October 2026 "Spooky Secrets" build contest. MIT licensed.*
+[![CI](https://github.com/XachP/graveyard-shift/actions/workflows/ci.yml/badge.svg)](https://github.com/XachP/graveyard-shift/actions/workflows/ci.yml)
+· **26 engine tests** · MIT · *Tari Ootle "Spooky Secrets" contest, October 2026*
+
+**▶ Try it in the browser (no wallet, 30 s):** https://xachp.github.io/graveyard-shift/
+Pick a lantern (public, employee, auditor, coworker) and watch the same three paychecks change.
+
+![demo](docs/img/demo.gif)
 
 ---
 
-## The secret
+## Why this matters
 
-Every business runs payroll, and no one wants it on a public ledger. On a transparent chain a
-block explorer shows every salary, raise and bonus to coworkers, competitors and scammers.
-Most "private payroll" setups fix this by trusting a custodian.
+Every business runs payroll, and no business can run it on a transparent chain. A block explorer
+would show every salary, raise and severance to coworkers, competitors and scammers. That isn't a
+niche worry. Pay confidentiality is a legal and HR requirement in most companies, and it's why
+real payroll never touches public chains.
 
-Graveyard Shift uses Ootle's native **confidential resources** and **view keys** instead:
+But payroll can't be a black box either. Accountants, tax authorities and boards need to check
+the books. **The Ootle can do both at once**, with primitives a transparent chain doesn't have:
 
-| Who | Sees |
-|---|---|
-| **Everyone** | The total budget the employer minted (supply tracking), who is on staff, and which pay periods each person was paid for |
-| **Nobody on-chain** | Any individual salary. Paychecks are Pedersen commitments, so no amount appears in state, events or receipts |
-| **The employee** | Their own paycheck. They hold the mask and can spend it confidentially (rent, savings, etc.) |
-| **The auditor** (view key) | Every paycheck and the treasury balance, enough to reconcile `Σ paychecks + treasury = budget`. The view key can't spend anything. |
+| | Transparent chain | Mixer / custodian | **Graveyard Shift on Ootle** |
+|---|---|---|---|
+| Salaries hidden from the public | ✘ | ✔ | ✔ Pedersen commitments + range proofs |
+| Employee gets pay info without a side channel | n/a | trust the custodian | ✔ encrypted pay stub on their output |
+| Auditor can reconcile | ✔ (so can everyone) | trust the custodian | ✔ resource view key (ElGamal) |
+| Auditor can't spend | n/a | ✘ | ✔ view key ≠ spend key |
+| Employer can't pay off-book | ✘ | ✘ | ✔ engine requires a proof the auditor can read |
+| Prove one salary to one landlord | ✘ (everyone sees it) | ✘ | ✔ payslip opening checked against the chain |
 
-That's the spooky part: the money moves in plain sight, but only the person holding the right key can read it.
+## The four lanterns
 
-## How it works
+| 🕯 Lantern | Holds | Sees |
+|---|---|---|
+| 👁 **The public** | nothing | the public budget, the roster, that a shift was paid and its head count, and opaque commitments. **No amounts anywhere**: state, events and receipts were all scanned in tests |
+| 🔑 **The employee** | own key | **their own** amount, mask and private memo ("36h nights + 4h overtime"), decrypted from the chain. Can spend it confidentially |
+| 📜 **The auditor** | resource view key | **every amount**, enough to prove `Σ paychecks + treasury = public budget`. **No memos. No spending power** |
+| 🦇 **A coworker** | any other key | nothing |
 
-```
-employer ──new(auditor_vk, budget)──▶  GraveyardShift component
-                                        ├─ treasury: Vault<SHIFT>   (confidential, view key = auditor)
-                                        ├─ staff:    account → {role, active, last_paid_period}
-                                        └─ period:   u64
-employer ──hire(alice, "night nurse")──▶ roster (public)
-employer ──open_period()──────────────▶ period += 1
-employer ──pay(alice, withdraw_proof)─▶ treasury ─(hidden amount)─▶ alice's account
-                                        event: PaycheckIssued{employee, period}  ← no amount
-auditor  ──(off-chain) decrypt with view key──▶ 3000 + 2500 + 4500 = 10000 ✔
-```
+## Ootle privacy features used
 
-* **`new(auditor_view_key, budget, value_proofs)`** creates the `SHIFT` confidential payroll token
-  with the auditor's view key fixed on the resource and mints the opening budget as commitments.
-  Only the component itself can mint more (`top_up`), and nobody can burn or recall.
-* **`hire` / `terminate`** manage a public roster that holds a role label and no amounts.
-* **`open_period` / `pay`**: each active employee can be paid **once per period**. A paycheck is
-  a `ConfidentialWithdrawProof` the employer builds client side. It spends treasury commitments
-  into exactly one hidden output for the employee, and the hidden change goes back to the treasury.
-* **`top_up`** adds confidential budget. The minted total becomes public. How it's split into
-  salaries doesn't.
-* Read-only views: `period`, `is_paid_this_period`, `staff_count`, `paychecks_issued`,
-  `public_budget`, `treasury_commitment_count`, `payroll_resource`.
+* **Confidential resources.** The `SHIFT` payroll token is `ResourceBuilder::confidential()`. Balances are Pedersen
+  commitments with Bulletproof range proofs.
+* **Resource view keys.** `.with_view_key(auditor)`: every output carries an ElGamal
+  `ViewableBalanceProof` to the auditor, and **the engine refuses outputs without one**.
+* **Encrypted output data.** Each paycheck's `EncryptedData` is DH-encrypted to the employee
+  (`encrypt_value_and_mask`): amount, mask and memo, with memo length padded to size tiers.
+  Treasury change is encrypted to the employer, so the employer's wallet can be rebuilt from chain state.
+* **`ConfidentialWithdrawProof`.** Paychecks spend treasury commitments into one hidden output and hidden change.
+  Revealed amounts are rejected.
+* **Value proofs** on mint, so the total budget is public while every split stays private.
+* **Atomic multi-payment transactions.** `pay_shift` pays the whole crew in one transaction with a
+  single `ShiftPaid {period, paychecks}` event, so per-person payment timing doesn't leak within a run.
 
-### Guard rails (all covered by tests)
+## Architecture
 
-1. **No accidental leaks.** `pay` rejects any proof with a revealed input, output or change
-   amount, so an employer can't publish someone's salary by mistake.
-2. **No hiding from the auditor.** Because the resource carries a view key, the engine refuses
-   any paycheck output without a `ViewableBalanceProof`. An employer can't sneak an off-book
-   payment past the auditor.
-3. **No double pay.** One paycheck per employee per period.
-4. **Employer-only.** `hire`, `terminate`, `open_period`, `pay` and `top_up` require the
-   instantiating key (`rule!(public_key(employer))`, taken from `CallerContext`, never from an argument).
-5. **Terminated staff can't be paid.**
-6. **Fixed supply rules.** Mint is locked to the component, and burn and recall are `deny_all` and `LOCKED`.
-
-## Tests
-
-The tests run against the real Ootle execution engine via `tari_template_test_tooling`:
-
-```
-$ cargo test
-running 9 tests
-test salaries_are_hidden_but_the_auditor_can_reconcile_the_books ... ok
-test paycheck_events_never_contain_amounts ... ok
-test employee_can_spend_their_paycheck ... ok
-test cannot_pay_the_same_employee_twice_in_one_period ... ok
-test revealed_paychecks_are_rejected_so_salaries_cannot_leak ... ok
-test employer_cannot_hide_a_paycheck_from_the_auditor ... ok
-test outsiders_cannot_hire_or_pay ... ok
-test terminated_staff_are_not_paid ... ok
-test top_up_grows_the_public_budget_only ... ok
-test result: ok. 9 passed; 0 failed
+```mermaid
+sequenceDiagram
+    autonumber
+    participant E as Employer wallet
+    participant GS as GraveyardShift component
+    participant A as Alice's account
+    participant AU as Auditor (view key)
+    participant L as Landlord
+    E->>GS: new(auditor_vk, budget commitments, value proofs)
+    Note over GS: mints confidential SHIFT<br/>view key locked on the resource
+    E->>GS: hire(alice, "night nurse") · open_period()
+    E->>E: build paychecks: hidden output → stub encrypted to Alice,<br/>hidden change → encrypted to employer
+    E->>GS: pay_shift([(alice, proof), (bob, proof), (carol, proof)])
+    GS->>A: deposit(hidden paycheck)
+    Note over GS: event ShiftPaid {period: 1, paychecks: 3}<br/>no names, no amounts
+    A->>A: decrypt own stub: 3000 + memo
+    AU->>AU: ElGamal-decrypt every vault:<br/>3000 + 2500 + 1313 + 3187 = 10000 ✔
+    A-->>L: payslip (amount, mask), off-chain, to one person
+    L->>L: recompute C = m·G + v·H, check it's in Alice's vault ✔
 ```
 
-The headline test hires Alice (night nurse) and Bob (security guard), pays them 3,000 and 2,500
-from a 10,000 budget, then shows that:
+```mermaid
+flowchart LR
+    subgraph Public["👁 public (on-chain)"]
+      B[budget: 10000 SHIFT] --- R[roster: alice · bob · carol]
+      R --- C1[Alice: commitment C₁] & C2[Bob: C₂] & C3[Carol: C₃]
+    end
+    C1 -- employee key --> S1[🔑 3000 · memo]
+    C1 -- view key --> V1[📜 3000]
+    C1 -- other key --> X1[🦇 nothing]
+```
 
-* each employee vault holds a single opaque commitment,
-* the auditor decrypts 3,000, 2,500 and 4,500 (treasury) with the view key, and they sum to the public budget,
-* a random "nosy coworker" key decrypts nothing.
+### Methods
 
-## Build
+| Method | Who | What |
+|---|---|---|
+| `new(auditor_vk, budget, value_proofs)` | anyone (becomes the employer) | creates the confidential `SHIFT` token with the auditor view key and mints the opening budget |
+| `hire(account, role)` / `terminate(account)` | employer | public roster (role label only, max 64 bytes); rehire after termination is allowed |
+| `open_period()` | employer | next pay period; each active employee can be paid once per period |
+| `pay(account, proof)` | employer | one confidential paycheck → event `PaycheckIssued {employee, period}` |
+| `pay_shift([(account, proof)…])` | employer | up to 64 paychecks, atomic, one `ShiftPaid {period, paychecks}` event |
+| `top_up(budget, value_proofs)` | employer | mint more confidential budget (total becomes public, split doesn't) |
+| `roster`, `period`, `is_paid_this_period`, `staff_count`, `paychecks_issued`, `public_budget`, `treasury_commitment_count`, `payroll_resource` | anyone | read-only, never amounts |
+
+## Run it
 
 ```bash
 rustup target add wasm32-unknown-unknown
-cargo build --target wasm32-unknown-unknown --release   # → target/wasm32-unknown-unknown/release/graveyard_shift.wasm
-cargo test
+cargo test                                   # 26 tests on the real Ootle engine
+cargo run --example haunted_payroll 2>/dev/null   # the narrated night shift (the GIF above)
+cargo build --release --target wasm32-unknown-unknown   # → graveyard_shift.wasm (~190 KB)
 ```
 
-> Note: `tari_template_test_tooling 0.47.0` doesn't compile against `tari_crypto 0.24.1`
-> (type inference break in `support/stealth.rs`). `Cargo.lock` pins `tari_crypto 0.24.0`. If you
-> regenerate the lock file, run `cargo update -p tari_crypto --precise 0.24.0`.
+`cargo run --example haunted_payroll -- --json docs/demo/transcript.json` then
+`python3 docs/build_demo.py` regenerates the browser demo from a fresh engine run. Every commitment,
+ciphertext and decryption on the page comes from that run, and the page decrypts nothing itself.
 
-## Limitations and next steps
+### Tests (26, all against the real engine)
 
-* **Mask delivery.** In the tests the employer hands each employee their paycheck mask
-  directly. A production client would put it in the output's encrypted data for the employee,
-  the same way Ootle wallets already deliver confidential transfers.
-* **Treasury bookkeeping** happens client side. The employer's wallet tracks treasury
-  commitment masks, like any confidential wallet does.
-* **Roster privacy.** Who is employed is public by design here, since an auditable payroll needs a
-  public headcount. A follow-up could pay into stealth UTXOs to hide recipients too.
-* **Next:** a small CLI (ootle-rs) for the employer and an auditor CLI that prints a reconciliation report
-  from the indexer, plus a Sapient Web Extension front end for employees.
+| Area | Tests |
+|---|---|
+| Hidden salaries + reconciliation | salaries hidden / auditor reconciles · books reconcile across a month (raise, exit, top-up) · top-up grows only the public budget |
+| Encrypted pay stubs | employee reads own stub from chain · auditor sees amount but not memo · coworkers can't open each other's stubs · employer rebuilds treasury from chain alone · employee spends paycheck, landlord reads rent |
+| Payslips | honest payslip verifies · inflated, borrowed and forged payslips are caught |
+| One-transaction shifts | one tx, one amountless event · one bad paycheck pays nobody (atomic) · same person twice rejected · empty shift rejected |
+| Leak checks | events carry no amount fields · whole receipt scanned for the salary in decimal, LE bytes and hex |
+| Guard rails | revealed paychecks rejected · off-book (no view-key proof) rejected by the engine · double pay · terminated staff · pay before a period opens · hire twice / rehire · outsiders can't hire, pay, open periods, top up, terminate or run shifts · auditor can't spend · internal helpers not callable |
+
+See **[THREAT_MODEL.md](THREAT_MODEL.md)**, which maps 17 attacks to the test that plays each one, plus what still leaks.
+
+## Honest limits
+
+* **The roster is public** (account + role + paid-this-period). An auditable headcount needs that.
+  Paying into stealth UTXOs would hide recipients too, and that's next.
+* **The total budget is public** (supply tracking). The split isn't.
+* **The auditor key is fixed per payroll** and opens all amounts of this token.
+* **Not yet on Esmeralda.** The public testnet faucet is currently empty (999.65 tTARI held,
+  1,000 per claim). Everything is verified on the in-process engine (`tari_template_test_tooling 0.47`).
+  Unaudited.
+
+> Build note: `tari_template_test_tooling 0.47.0` doesn't compile against `tari_crypto 0.24.1`.
+> `Cargo.lock` pins `0.24.0`. If you regenerate the lock, run `cargo update -p tari_crypto --precise 0.24.0`.
+
+## Roadmap
+
+1. Deploy to Esmeralda and record explorer links for a full shift.
+2. Stealth paychecks, so the roster is private too (pay to one-time stealth outputs and prove
+   headcount with a counter).
+3. Sapient Web Extension page for employees: connect, read your stubs, export a payslip.
+4. Auditor CLI that reconciles straight from the indexer.
 
 ## Disclosure
 
-Built with the help of an AI coding agent, under the direction of the submitter. All code is new
-for this contest (October 2026).
+Built with an AI coding agent under the submitter's direction. All code is new for this contest (October 2026). MIT.
