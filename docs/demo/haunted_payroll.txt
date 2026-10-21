@@ -1,0 +1,51 @@
+🦇  GRAVEYARD SHIFT · confidential payroll on the Tari Ootle
+   every step below is a real transaction on the Ootle engine, run in-process
+
+── Act I · the payroll opens at dusk ──
+  employer opens a payroll with a public budget of 10000 SHIFT
+  the SHIFT token is confidential, and the auditor's view key is fixed on it for good
+  public_budget() → Some(Amount(10000))
+
+── Act II · the night crew is hired ──
+  hired Alice as night nurse     component_…28006a
+  hired Bob as security guard  component_…4b497c
+  hired Carol as gravedigger     component_…5f8c5b
+
+── Act III · midnight: the whole shift is paid in ONE transaction ──
+  event ShiftPaid { period: 1, paychecks: 3 }   ← no names, no amounts
+
+── Act IV · 🕯  the four lanterns ──
+
+  Alice · night nurse
+    👁  public     commitment e46fa6d697…d2b53c · 144 bytes of ciphertext
+    🔑 Alice     3000 SHIFT · memo "Oct wk1 · 36h nights + 4h overtime"
+    📜 auditor    3000 SHIFT · memo sealed (view key opens amounts, not stubs)
+    🦇 coworker   nothing · stubs opened: 0
+
+  Bob · security guard
+    👁  public     commitment 0834000e0a…bd992f · 144 bytes of ciphertext
+    🔑 Bob       2500 SHIFT · memo "Oct wk1 · 40h · keys to the crypt"
+    📜 auditor    2500 SHIFT · memo sealed (view key opens amounts, not stubs)
+    🦇 coworker   nothing · stubs opened: 0
+
+  Carol · gravedigger
+    👁  public     commitment 785d29452d…33ae47 · 144 bytes of ciphertext
+    🔑 Carol     1313 SHIFT · memo "Oct wk1 · 13 graves · shovel allowance"
+    📜 auditor    1313 SHIFT · memo sealed (view key opens amounts, not stubs)
+    🦇 coworker   nothing · stubs opened: 0
+
+── Act V · the auditor closes the books at dawn ──
+  paychecks 6813 + treasury 3187 = 10000   public budget 10000  ✔ reconciled
+
+── Act VI · a payslip for the landlord ──
+  Alice shows ONE opening to ONE landlord: 3000 SHIFT  → ✔ matches the chain
+  she tries to claim 9999 instead                  → ✘ rejected
+
+── Act VII · the guard rails hold ──
+  paycheck with a revealed amount   → rejected (would publish a salary)
+  outsider runs payroll             → rejected (employer key only)
+  same person twice in one shift    → rejected (whole shift reverts)
+
+
+🌅  dawn. the money moved in plain sight; only the right keys could read it.
+
