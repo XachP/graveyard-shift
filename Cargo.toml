@@ -1,0 +1,45 @@
+[workspace]
+
+[package]
+name = "graveyard_shift"
+version = "0.1.0"
+edition = "2024"
+description = "Graveyard Shift: confidential payroll on Tari Ootle. Salaries stay secret on-chain; a designated auditor can still check the books with a view key."
+license = "MIT"
+
+[package.metadata.tari-template]
+tags = ["payroll", "privacy", "confidential", "view-key", "audit"]
+category = "finance"
+
+[dependencies]
+tari_template_lib = { version = "0.35" }
+
+[dev-dependencies]
+tari_template_test_tooling = "0.47"
+rand = "0.10"
+
+[build-dependencies]
+tari_ootle_template_build = "0.16"
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 's'
+lto = true
+codegen-units = 1
+panic = 'abort'
+strip = true
+
+[profile.dev.package.wasmer]
+opt-level = 2
+[profile.dev.package.wasmer-compiler]
+opt-level = 2
+[profile.dev.package.wasmer-compiler-cranelift]
+opt-level = 2
+[profile.dev.package.cranelift-codegen]
+opt-level = 2
+[profile.dev.package.cranelift-frontend]
+opt-level = 2
+[profile.dev.package.cranelift-entity]
+opt-level = 2
