@@ -34,7 +34,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{border-bottom:1px
 </style>
 </head>
 <body><div class="wrap">
-<span class="badge">Tari Ootle · Spooky Secrets 2026</span><span class="badge">MIT</span><span class="badge">engine-verified transcript</span>
+<span class="badge">Tari Ootle · Spooky Secrets 2026</span><span class="badge">MIT</span><span class="badge">engine-verified transcript</span><span class="badge" style="color:var(--green);border-color:var(--green)">● live on Esmeralda</span>
 <h1>🦇 Graveyard <span>Shift</span></h1>
 <p class="sub">Confidential payroll on the Tari Ootle. The money moves in plain sight, but only the right key can read it. Pick a lantern to see the same three paychecks the way each party does.</p>
 
@@ -58,6 +58,20 @@ table{width:100%;border-collapse:collapse;font-size:14px}td,th{border-bottom:1px
   <h3>⛓ What the shift's single transaction published</h3>
   <table><tr><th>field</th><th>value</th><th></th></tr>
   <tbody id="tx"></tbody></table>
+</div>
+
+<div class="card" style="margin-top:14px;border-color:var(--green)">
+  <h3>🟢 Live on Esmeralda (Ootle public testnet)</h3>
+  <div class="role">The template is published and a real night shift was paid on-chain: two hires, a new period and two confidential paychecks in one transaction. Open it in the <a href="https://explorer.tari.mw">Veil explorer</a>.</div>
+  <table>
+  <tr><td>Template</td><td class="mono"><a href="https://explorer.tari.mw/template/93a17d16cce0cec637f618b0cda9a9a869ac706b4b98e77ee28aaa40b419e570">93a17d16cce0cec637f618b0cda9a9a869ac706b4b98e77ee28aaa40b419e570</a></td></tr>
+  <tr><td>Payroll component</td><td class="mono"><a href="https://explorer.tari.mw/substate/component_7ffa963826ef41ea9d082c8142b7cb02c554b19bad91ee9de9f71ba62e6367fc">component_7ffa963826ef41ea9d082c8142b7cb02c554b19bad91ee9de9f71ba62e6367fc</a></td></tr>
+  <tr><td>SHIFT token</td><td class="mono"><a href="https://explorer.tari.mw/substate/resource_7f7e726d1a87f15052ca5ec94227f25eebaa773580bb2e0b8e881265229bcef1">resource_7f7e726d1a87f15052ca5ec94227f25eebaa773580bb2e0b8e881265229bcef1</a></td></tr>
+  <tr><td>Shift tx (hire ×2 · open_period · pay_shift)</td><td class="mono"><a href="https://explorer.tari.mw/tx/ab2947b0fcb49adc66b30c68bc6f39832d7c218fdfcc292f5a16c1cc6ecbaeec">ab2947b0fcb49adc66b30c68bc6f39832d7c218fdfcc292f5a16c1cc6ecbaeec</a></td></tr>
+  <tr><td>Create tx (budget 10,000)</td><td class="mono"><a href="https://explorer.tari.mw/tx/ca55a282e81382774f8698f329aa58abe5b3b9034f6fb06ba654098f36434f9d">ca55a282e81382774f8698f329aa58abe5b3b9034f6fb06ba654098f36434f9d</a></td></tr>
+  <tr><td>Publish tx</td><td class="mono"><a href="https://explorer.tari.mw/tx/cb4494d56fe2c04c6cbad62c23c1ac69f7e708d81a520996bd1befc6617c0acc">cb4494d56fe2c04c6cbad62c23c1ac69f7e708d81a520996bd1befc6617c0acc</a></td></tr>
+  </table>
+  <div class="role" style="margin-top:8px">Read back from the public indexer: each employee key opens only its own stub (3000 · “12 nights, ward 13”; 2500 · “9 plots, lantern allowance”), and the auditor view key reads 3000 + 2500 + 4500 treasury = <span class="ok">10000 = public budget ✔</span>. Events carry no amounts: <span class="mono">ShiftPaid {period: 1, paychecks: 2}</span>.</div>
 </div>
 
 <footer>
