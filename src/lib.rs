@@ -15,6 +15,14 @@
 //! The template also refuses any payment that would put a salary on-chain in the clear
 //! (revealed inputs or outputs), so an employer can't leak someone's pay by accident.
 //!
+//! Each paycheck output carries an **encrypted pay stub** (Ootle `EncryptedData`, DH-encrypted to
+//! the employee's key): the employee recovers their amount, mask and a private memo straight from
+//! the chain. The auditor's view key opens amounts but not memos. An employee can hand a single
+//! payslip (amount + mask) to a landlord or lender, who checks it against the on-chain commitment.
+//!
+//! `pay_shift` pays the whole night shift in one atomic transaction and emits a single
+//! `ShiftPaid` event with only a head count, so per-person payment timing does not leak either.
+//!
 //! License: MIT
 
 use std::collections::BTreeMap;
@@ -98,6 +106,7 @@ mod graveyard_shift {
                     .method("terminate", employer_only.clone())
                     .method("open_period", employer_only.clone())
                     .method("pay", employer_only.clone())
+                    .method("pay_shift", employer_only.clone())
                     .method("top_up", employer_only.clone())
                     .method("period", rule!(allow_all))
                     .method("is_paid_this_period", rule!(allow_all))
@@ -106,6 +115,7 @@ mod graveyard_shift {
                     .method("payroll_resource", rule!(allow_all))
                     .method("public_budget", rule!(allow_all))
                     .method("treasury_commitment_count", rule!(allow_all))
+                    .method("roster", rule!(allow_all))
                     .default(rule!(deny_all)),
             )
             .create()
@@ -149,6 +159,43 @@ mod graveyard_shift {
         /// treasury commitments into one output commitment (the paycheck) plus optional change that
         /// stays in the treasury. Any revealed amount is rejected so no salary is ever readable on-chain.
         pub fn pay(&mut self, employee_account: ComponentAddress, paycheck: ConfidentialWithdrawProof) {
+            let period = self.issue_paycheck(employee_account, paycheck);
+            // Deliberately no amount in the event.
+            emit_event("PaycheckIssued", metadata![
+                "employee" => employee_account.to_string(),
+                "period" => period.to_string(),
+            ]);
+        }
+
+        /// Pays a whole shift in one atomic transaction.
+        ///
+        /// Every paycheck gets the same checks as `pay`. If any one of them fails (revealed amount,
+        /// unknown or terminated employee, double pay, duplicate in the batch), the whole shift is
+        /// rejected and nobody is paid. A single `ShiftPaid` event carries only the period and the
+        /// head count, so observers can't time individual paychecks within the run.
+        pub fn pay_shift(&mut self, paychecks: Vec<(ComponentAddress, ConfidentialWithdrawProof)>) {
+            assert!(!paychecks.is_empty(), "A shift needs at least one paycheck");
+            assert!(paychecks.len() <= 64, "At most 64 paychecks per shift");
+            let count = paychecks.len();
+            let mut period = self.period;
+            for (employee_account, paycheck) in paychecks {
+                period = self.issue_paycheck(employee_account, paycheck);
+            }
+            emit_event("ShiftPaid", metadata![
+                "period" => period.to_string(),
+                "paychecks" => count.to_string(),
+            ]);
+        }
+
+        /// Public roster: (account, role, active, paychecks received). No amounts.
+        pub fn roster(&self) -> Vec<(ComponentAddress, String, bool, u64)> {
+            self.staff
+                .iter()
+                .map(|(addr, e)| (*addr, e.role.clone(), e.active, e.paychecks))
+                .collect()
+        }
+
+        fn issue_paycheck(&mut self, employee_account: ComponentAddress, paycheck: ConfidentialWithdrawProof) -> u64 {
             assert!(self.period > 0, "No pay period is open; call open_period first");
             assert!(
                 paycheck.revealed_input_amount().is_zero() &&
@@ -176,12 +223,7 @@ mod graveyard_shift {
                 "A paycheck must contain exactly one confidential output"
             );
             ComponentManager::get(employee_account).invoke("deposit", args![bucket]);
-
-            // Deliberately no amount in the event.
-            emit_event("PaycheckIssued", metadata![
-                "employee" => employee_account.to_string(),
-                "period" => period.to_string(),
-            ]);
+            period
         }
 
         /// Mints more confidential budget into the treasury. The amount minted becomes public
