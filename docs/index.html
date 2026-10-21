@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Graveyard Shift · confidential payroll on the Tari Ootle</title>
+<meta name="description" content="Salaries stay in the dark on-chain. Employees read their own pay stub, the auditor reconciles the books with a view key, coworkers see nothing.">
+<style>
+:root{--bg:#0b0a10;--card:#15131d;--line:#2a2638;--ink:#e9e6f2;--dim:#8f89a6;--orange:#ff8a1f;--purple:#a98bff;--green:#57d68d;--red:#ff5f6d}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(1200px 600px at 70% -10%,#24163a 0,var(--bg) 60%);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:32px 20px 80px}
+h1{font-size:40px;margin:0 0 4px;letter-spacing:-.5px}h1 span{color:var(--orange)}
+.sub{color:var(--dim);margin:0 0 24px;max-width:760px}
+.badge{display:inline-block;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px;color:var(--dim);margin-right:6px}
+.lanterns{display:flex;gap:10px;flex-wrap:wrap;margin:22px 0 8px}
+.lantern{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:12px 16px;min-width:200px;text-align:left;transition:.15s}
+.lantern b{display:block;font-size:15px}.lantern small{color:var(--dim)}
+.lantern.on{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange),0 0 28px -6px var(--orange)}
+.explain{color:var(--dim);min-height:48px;margin:6px 0 16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.card h3{margin:0 0 2px;font-size:18px}.role{color:var(--dim);font-size:13px;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;gap:10px;border-top:1px dashed var(--line);padding:8px 0;font-size:14px}
+.row span:first-child{color:var(--dim)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
+.amt{font-size:26px;font-weight:700}.sealed{color:var(--red)}.open{color:var(--green)}.vk{color:var(--purple)}
+.fog{filter:blur(5px);user-select:none}
+.ledger{margin-top:18px}.ok{color:var(--green);font-weight:700}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}@media(max-width:760px){.two{grid-template-columns:1fr}}
+button.act{background:var(--orange);color:#120b00;border:0;border-radius:10px;padding:8px 14px;font-weight:700;cursor:pointer}
+input{background:#0f0e15;border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:6px 8px;width:110px}
+footer{color:var(--dim);font-size:13px;margin-top:36px}a{color:var(--purple)}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{border-bottom:1px solid var(--line);padding:8px 6px;text-align:left}th{color:var(--dim);font-weight:500}
+</style>
+</head>
+<body><div class="wrap">
+<span class="badge">Tari Ootle · Spooky Secrets 2026</span><span class="badge">MIT</span><span class="badge">engine-verified transcript</span>
+<h1>🦇 Graveyard <span>Shift</span></h1>
+<p class="sub">Confidential payroll on the Tari Ootle. The money moves in plain sight, but only the right key can read it. Pick a lantern to see the same three paychecks the way each party does.</p>
+
+<div class="lanterns" id="lanterns"></div>
+<div class="explain" id="explain"></div>
+<div class="grid" id="crew"></div>
+
+<div class="two">
+  <div class="card ledger" id="books"></div>
+  <div class="card ledger">
+    <h3>📄 Payslip for a landlord</h3>
+    <div class="role">Alice privately hands <i>one</i> landlord the opening (amount + mask) of <i>one</i> paycheck. The landlord recomputes the Pedersen commitment and checks it is in Alice's vault on-chain.</div>
+    <div class="row"><span>Alice's on-chain commitment</span><span class="mono" id="slipC"></span></div>
+    <div class="row"><span>Alice claims she earns</span><span><input id="claim" type="number" value="3000"> SHIFT <button class="act" id="check">Verify</button></span></div>
+    <div class="row"><span>Result</span><span id="slipR">–</span></div>
+    <div class="role" style="margin-top:8px">Replays the engine result: the honest claim (3000) verified, an inflated claim (9999) was rejected. Any other number can't open the commitment either.</div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:14px">
+  <h3>⛓ What the shift's single transaction published</h3>
+  <table><tr><th>field</th><th>value</th><th></th></tr>
+  <tbody id="tx"></tbody></table>
+</div>
+
+<footer>
+Every commitment, ciphertext and decryption on this page comes from a real run of the template on the Ootle engine: <span class="mono">cargo run --example haunted_payroll -- --json docs/demo/transcript.json</span>. The page decrypts nothing itself; it replays that run.
+Code: <a href="https://github.com/XachP/graveyard-shift">github.com/XachP/graveyard-shift</a> · 26 engine tests · MIT.
+</footer>
+</div>
+<script>
+const T = {"generated_by": "cargo run --example haunted_payroll", "budget": 10000, "payroll": "component_86f4de64b15de356e8329c728a91ccbf393f48780f1d7deed077ffb3e0826aa2", "resource": "resource_86072a4d4fffa4488f4345da90bb5242e9cdc42450aef6e1b230184ef5ed9c9e", "event": {"topic": "ShiftPaid", "period": "1", "paychecks": "3"}, "crew": [{"name": "Alice", "role": "night nurse", "account": "component_3230781eb41523d792c58a7f6485e18cef92f71003100b14c347c1bd5d28006a", "commitment": "e46fa6d697d1f6ec87c3e2453290472d0d4dbac54b383ea07598ebcab7d2b53c", "viewable_balance": {"encrypted": "3c53da4654a6d4fc8baba57b998531b410685138be2eb75ae4eb56a07f3a6f1c", "nonce": "c03549db9090c2f7cf0f565f20476e8ca36237ca81d278fabb418b427736f572"}, "encrypted_data_hex": "d2a5c9cf45974a64af375f2f7312e506d2a2f221d5c15514b9b2b6ffa0a02b58c197570d205bdfccc72007b9ea3588e9f06c6641feadef6f54fdf74034b26449b66b40b146579081d2383fa8d2dedc4eba4dbf32a15dc3efc9e7c065895c48bf15eb692b1149503a3b50f1bd66b7fd94baeb58c0d6ff90c089fa9b56b2c91db048298e781037732dec9676ac68f42261", "stub_nonce": "2ca10a5fda28495d99bfd3a2914a3c48b0ab21224a1dbe114296521b12cf093b", "employee_view": {"amount": 3000, "memo": "Oct wk1 \u00b7 36h nights + 4h overtime"}, "auditor_view": {"amount": 3000, "memo_opened": false}, "coworker_view": {"amount": null, "memo_opened": false}}, {"name": "Bob", "role": "security guard", "account": "component_3af8d8c2f59a9b50d2060002382ac631652c931aa134df81ceb3c254164b497c", "commitment": "0834000e0af8051d1e9d0f485a3c2a5fe33b19ac9d7a5ac4c55d260bd5bd992f", "viewable_balance": {"encrypted": "9c99cce0da843c555100a6ac9baf9b2df75efdd249ca9123af15c57985294375", "nonce": "0a220bc6e1f60e301b1fff9dd5a0eedd7d518118e06462793cf86a945ca40201"}, "encrypted_data_hex": "0411bbdab4bde60e68962c86ebd2272b77eb291fd61e00061a357feaaab5aabaf6782fe90f133d146c55ba503be910bf6c4a7184fd0a276a8ae9721e6f1f1816e510b3574987437376d23cf97b290d085f460242035d7fd05ba7d3c1e81765a910dd583e49e2ea36d6d9c72951f4583a8d4d2e25f7fdaa887cbe77933c87c742e0cfbc5654e2796fbbae4c69b9da1179", "stub_nonce": "38f9313f2cce02d442725db26ce8557fbc67058f2a58caf21dbd7f81d1419722", "employee_view": {"amount": 2500, "memo": "Oct wk1 \u00b7 40h \u00b7 keys to the crypt"}, "auditor_view": {"amount": 2500, "memo_opened": false}, "coworker_view": {"amount": null, "memo_opened": false}}, {"name": "Carol", "role": "gravedigger", "account": "component_696d007ef08b27d8c5b2d6fe8a0d8238ad05a4673971c8f481d2d6c3035f8c5b", "commitment": "785d29452d1c41a42c6f66baad703260fa1c0f9fb5a3c2881667df7d6233ae47", "viewable_balance": {"encrypted": "2a6b659411c61eecc7efb7d6b0074f295a9fe43bdf7809e2ec0a7adf00342313", "nonce": "cc8e45e4dd388bc8b23ca30d57ca2ac4c2c0dccb9f87993acbf95b786cf66d5e"}, "encrypted_data_hex": "03566c4bdf54aa7a1381c3ebd34219b3011efe7852593dce44c23627af2805ff4a24921ac48af46c5d47b1f41152082c10ace30cac932874a82360f68f816ae1202239458ed1302e632a121763ca6af5326696ead3b92bc9844be75c35df93bfd152f6cc4b496d88cf01b2be14325356f69228cdaff9d14658c22c6fe2d2915820da1066b025754625291aa62b265d8e", "stub_nonce": "dec29de124ffbf24f5335f963a548b44eae99de4ed2e4f6c15abc259eebf4a6c", "employee_view": {"amount": 1313, "memo": "Oct wk1 \u00b7 13 graves \u00b7 shovel allowance"}, "auditor_view": {"amount": 1313, "memo_opened": false}, "coworker_view": {"amount": null, "memo_opened": false}}], "treasury_auditor_view": 3187, "reconciled": true, "payslip": {"employee": "Alice", "claimed": 3000, "verified": true, "inflated_claim": 9999, "inflated_verified": false}};
+const L = [
+ {id:"public",icon:"👁",name:"The public",sub:"block explorer, competitors",explain:"Anyone sees the roster, that the shift was paid, the public budget, and opaque commitments. No salary appears anywhere: not in state, events or receipts."},
+ {id:"employee",icon:"🔑",name:"Alice (employee)",sub:"her own key",explain:"Alice's key opens the encrypted pay stub on her own paycheck output: amount, mask and a private memo, straight from the chain. Bob's and Carol's stay sealed to her."},
+ {id:"auditor",icon:"📜",name:"The auditor",sub:"resource view key",explain:"The view key fixed on the SHIFT token opens every amount (ElGamal viewable balances) so the books reconcile. It opens no memos and can't spend anything."},
+ {id:"coworker",icon:"🦇",name:"A nosy coworker",sub:"any other key",explain:"A different key opens nothing: no amounts, no memos. Being on the same payroll gives you no window into anyone else's pay."}
+];
+let cur=(location.hash||"#public").slice(1);if(!["public","employee","auditor","coworker"].includes(cur))cur="public";
+const s=(h)=>h.slice(0,10)+"…"+h.slice(-6);
+function render(){
+ document.getElementById("lanterns").innerHTML=L.map(l=>`<button class="lantern ${l.id==cur?"on":""}" data-id="${l.id}"><b>${l.icon} ${l.name}</b><small>${l.sub}</small></button>`).join("");
+ document.querySelectorAll(".lantern").forEach(b=>b.onclick=()=>{cur=b.dataset.id;history.replaceState(null,"","#"+cur);render()});
+ document.getElementById("explain").textContent=L.find(l=>l.id==cur).explain;
+ document.getElementById("crew").innerHTML=T.crew.map(c=>{
+  let amt,memo,cls;
+  if(cur=="public"){amt=`<span class="sealed">████ hidden</span>`;memo=`<span class="sealed">sealed · ${c.encrypted_data_hex.length/2} bytes</span>`}
+  else if(cur=="employee"){ if(c.name=="Alice"){amt=`<span class="open">${c.employee_view.amount} SHIFT</span>`;memo=`<span class="open">“${c.employee_view.memo}”</span>`} else {amt=`<span class="sealed">hidden</span>`;memo=`<span class="sealed">sealed</span>`} }
+  else if(cur=="auditor"){amt=`<span class="vk">${c.auditor_view.amount} SHIFT</span>`;memo=`<span class="sealed">sealed (view key ≠ stub key)</span>`}
+  else {amt=`<span class="sealed">nothing</span>`;memo=`<span class="sealed">sealed</span>`}
+  return `<div class="card"><h3>${c.name}</h3><div class="role">${c.role} · on the public roster</div>
+   <div class="amt">${amt}</div>
+   <div class="row"><span>pay stub memo</span><span>${memo}</span></div>
+   <div class="row"><span>commitment</span><span class="mono">${s(c.commitment)}</span></div>
+   <div class="row"><span>viewable balance (ElGamal)</span><span class="mono">${s(c.viewable_balance.encrypted)}</span></div>
+   <div class="row"><span>account</span><span class="mono">${s(c.account)}</span></div></div>`}).join("");
+ const paid=T.crew.reduce((a,c)=>a+c.auditor_view.amount,0);
+ document.getElementById("books").innerHTML = cur=="auditor"
+  ? `<h3>📜 The auditor reconciles</h3><div class="role">Σ paychecks + treasury must equal the public budget.</div>${T.crew.map(c=>`<div class="row"><span>${c.name}</span><span>${c.auditor_view.amount}</span></div>`).join("")}<div class="row"><span>treasury</span><span>${T.treasury_auditor_view}</span></div><div class="row"><span><b>total</b></span><span><b>${paid+T.treasury_auditor_view}</b> = public budget ${T.budget} <span class="ok">✔</span></span></div>`
+  : `<h3>📒 The books</h3><div class="role">Public budget: <b>${T.budget} SHIFT</b> (supply is public by design). Paychecks issued: <b>${T.crew.length}</b>. Individual amounts: <span class="sealed">hidden</span>.</div><div class="row"><span>Switch to the auditor lantern to reconcile</span><span>📜</span></div>`;
+}
+document.getElementById("slipC").textContent=s(T.crew[0].commitment);
+document.getElementById("check").onclick=()=>{const v=+document.getElementById("claim").value;const ok=v===T.payslip.claimed&&T.payslip.verified;document.getElementById("slipR").innerHTML=ok?`<span class="ok">✔ opens the on-chain commitment</span>`:`<span class="sealed">✘ doesn't open the commitment, rejected</span>`};
+document.getElementById("tx").innerHTML=[
+ ["event topic",T.event.topic,"one event for the whole shift"],["period",T.event.period,"public"],["paychecks",T.event.paychecks,"head count only"],
+ ...T.crew.map(c=>[`output → ${c.name}`,s(c.commitment),"commitment + range proof"]),["amounts","—","none, anywhere"]
+].map(r=>`<tr><td>${r[0]}</td><td class="mono">${r[1]}</td><td style="color:var(--dim)">${r[2]}</td></tr>`).join("");
+render();
+</script>
+</body></html>
